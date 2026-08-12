@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Combination Lock Practice</title>
+<style>
+  :root {
+    --bg: #1a1d24;
+    --panel: #242832;
+    --dial: #d9dce3;
+    --dial-edge: #b4b8c2;
+    --ink: #1a1d24;
+    --accent: #4f8cff;
+    --good: #37c871;
+    --bad: #e5533d;
+    --muted: #8b91a0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: #eef0f4;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+  h1 { font-size: 1.5rem; margin: 8px 0 4px; }
+  .sub { color: var(--muted); font-size: .9rem; margin-bottom: 20px; text-align: center; }
+
+  .lock {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    user-select: none;
+  }
+  .dial {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffffff, var(--dial) 55%, var(--dial-edge));
+    box-shadow: 0 12px 30px rgba(0,0,0,.5), inset 0 0 0 6px #c4c8d1, inset 0 0 24px rgba(0,0,0,.18);
+    cursor: grab;
+    touch-action: none;
+  }
+  .dial:active { cursor: grabbing; }
+  .ticks { position: absolute; inset: 0; }
+  .tick {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform-origin: 0 0;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .tickmark {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 2px; height: 8px;
+    background: rgba(0,0,0,.35);
+    transform-origin: 0 0;
+  }
+  .tickmark.major { height: 12px; width: 2.5px; background: rgba(0,0,0,.6); }
+  .hub {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 70px; height: 70px;
+    margin: -35px 0 0 -35px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #6a7180, #3a3f4a);
+    box-shadow: inset 0 2px 4px rgba(255,255,255,.2), 0 2px 6px rgba(0,0,0,.4);
+  }
+  .pointer {
+    position: absolute;
+    left: 50%; top: -18px;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 18px solid var(--accent);
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,.4));
+    z-index: 3;
+  }
+  .readout {
+    margin: 18px 0 6px;
+    font-size: 2.4rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-top: 12px;
+    width: 340px;
+    max-width: 100%;
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    color: var(--muted);
+    font-size: .95rem;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .step:last-child { border-bottom: none; }
+  .step.active { color: #fff; }
+  .step.done { color: var(--good); }
+  .step .num {
+    flex: 0 0 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .8rem; font-weight: 700;
+  }
+  .step.active .num { background: var(--accent); color: #fff; }
+  .step.done .num { background: var(--good); color: #fff; }
+  .step b { color: inherit; }
+
+  .status {
+    text-align: center;
+    font-weight: 700;
+    min-height: 24px;
+    margin-top: 10px;
+    font-size: 1.05rem;
+  }
+  .status.good { color: var(--good); }
+  .status.bad { color: var(--bad); }
+
+  .setrow {
+    display: flex; align-items: center; gap: 8px; margin-top: 14px;
+    color: var(--muted); font-size: .9rem; justify-content: center; flex-wrap: wrap;
+  }
+  .setrow input {
+    width: 56px; padding: 7px 6px; border-radius: 7px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.06); color: #fff;
+    font-size: .95rem; text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .setrow input:focus { outline: none; border-color: var(--accent); }
+  button.small { padding: 7px 14px; font-size: .85rem; }
+  .seterr { text-align: center; color: var(--bad); font-size: .8rem; min-height: 16px; margin-top: 4px; }
+  .btns { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: .95rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.ghost { background: rgba(255,255,255,.1); }
+  button:hover { filter: brightness(1.08); }
+  .reveal { color: var(--muted); font-size: .85rem; margin-top: 10px; text-align:center; }
+  .reveal b { color: #fff; letter-spacing: 2px; }
+  kbd {
+    background: rgba(255,255,255,.1); border-radius: 4px; padding: 1px 6px; font-size: .8rem;
+  }
+</style>
+</head>
+<body>
+  <h1>🔒 Combination Lock Practice</h1>
+  <p class="sub">Drag the dial (or use <kbd>←</kbd> <kbd>→</kbd>). Learn the classic 3‑turn unlock sequence.</p>
+
+  <div class="lock">
+    <div class="pointer"></div>
+    <div class="dial" id="dial">
+      <div class="ticks" id="ticks"></div>
+      <div class="hub"></div>
+    </div>
+  </div>
+
+  <div class="readout" id="readout">0</div>
+
+  <div class="panel">
+    <div class="step" id="s0">
+      <span class="num">1</span>
+      <span>Turn <b>right (CW)</b> 3+ full turns, stop at <b id="n0">–</b></span>
+    </div>
+    <div class="step" id="s1">
+      <span class="num">2</span>
+      <span>Turn <b>left (CCW)</b> past 0 once, stop at <b id="n1">–</b></span>
+    </div>
+    <div class="step" id="s2">
+      <span class="num">3</span>
+      <span>Turn <b>right (CW)</b> directly to <b id="n2">–</b></span>
+    </div>
+    <div class="status" id="status"></div>
+
+    <div class="setrow">
+      <span>Set:</span>
+      <input type="number" id="c0" min="0" max="49" placeholder="0–49">
+      <input type="number" id="c1" min="0" max="49" placeholder="0–49">
+      <input type="number" id="c2" min="0" max="49" placeholder="0–49">
+      <button class="ghost small" id="setBtn">Use</button>
+    </div>
+    <div class="seterr" id="seterr"></div>
+
+    <div class="btns">
+      <button id="newBtn">Random Combination</button>
+      <button class="ghost" id="peekBtn">Reveal</button>
+      <button class="ghost" id="resetBtn">Reset Turn</button>
+    </div>
+    <div class="reveal" id="reveal"></div>
+  </div>
+
+<script>
+(function () {
+  const N = 50;                       // numbers 0..49
+  const DEG = 360 / N;                // 9 degrees per number
+  const dial = document.getElementById('dial');
+  const ticks = document.getElementById('ticks');
+  const readout = document.getElementById('readout');
+  const status = document.getElementById('status');
+  const reveal = document.getElementById('reveal');
+
+  // --- Build the dial numbers/ticks ---
+  const R = 150;
+  for (let i = 0; i < N; i++) {
+    const angle = i * DEG;            // 0 at top, clockwise
+    const rad = (angle - 90) * Math.PI / 180;
+    if (i % 1 === 0) {
+      const t = document.createElement('div');
+      t.className = 'tickmark' + (i % 5 === 0 ? ' major' : '');
+      t.style.transform = `rotate(${angle}deg) translate(-50%, -${R - 2}px)`;
+      ticks.appendChild(t);
+    }
+    if (i % 5 === 0) {
+      const label = document.createElement('div');
+      label.className = 'tick';
+      const lr = R - 26;
+      label.style.left = (150 + lr * Math.cos(rad)) + 'px';
+      label.style.top  = (150 + lr * Math.sin(rad)) + 'px';
+      // rotate each number so it sits perpendicular to the radius (base toward center), like a real dial
+      label.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+      label.textContent = i;
+      ticks.appendChild(label);
+    }
+  }
+
+  // --- State ---
+  let rotation = 0;          // dial rotation in degrees (positive = turned right/CW visually)
+  let combo = [0, 0, 0];
+  let stepIndex = 0;         // which step we're on (0,1,2,3=done)
+  let dirCount = 0;          // net direction tracking for full turns
+  let cwTurns = 0, ccwCross = 0;
+  let lastAngle = 0, totalTravel = 0;
+
+  function currentNumber() {
+    // The number at the top pointer. Turning dial CW (rotation +) brings higher numbers...
+    // On a real lock, turning the dial changes which number is at the mark.
+    let n = Math.round((-rotation / DEG)) % N;
+    n = ((n % N) + N) % N;
+    return n;
+  }
+
+  function randCombo() {
+    const r = () => Math.floor(Math.random() * N);
+    let a = r(), b = r(), c = r();
+    // avoid trivially adjacent numbers for realism
+    while (Math.abs(a - b) < 3) b = r();
+    while (Math.abs(b - c) < 3 || Math.abs(a - c) < 3) c = r();
+    return [a, b, c];
+  }
+
+  function applyCombo(c) {
+    combo = c;
+    document.getElementById('n0').textContent = combo[0];
+    document.getElementById('n1').textContent = combo[1];
+    document.getElementById('n2').textContent = combo[2];
+    resetTurn();
+    reveal.innerHTML = '';
+  }
+
+  function newCombo() {
+    applyCombo(randCombo());
+    document.getElementById('seterr').textContent = '';
+  }
+
+  function setCombo() {
+    const err = document.getElementById('seterr');
+    const raw = ['c0', 'c1', 'c2'].map(id => document.getElementById(id).value.trim());
+    if (raw.some(v => v === '')) { err.textContent = 'Enter all three numbers.'; return; }
+    const nums = raw.map(Number);
+    if (nums.some(v => !Number.isInteger(v) || v < 0 || v > N - 1)) {
+      err.textContent = 'Each number must be 0–' + (N - 1) + '.';
+      return;
+    }
+    err.textContent = '';
+    applyCombo(nums);
+  }
+
+  function resetTurn() {
+    stepIndex = 0;
+    cwTurns = 0; ccwCross = 0; totalTravel = 0;
+    status.textContent = '';
+    status.className = 'status';
+    updateSteps();
+    render();
+  }
+
+  function updateSteps() {
+    for (let i = 0; i < 3; i++) {
+      const el = document.getElementById('s' + i);
+      el.classList.toggle('active', i === stepIndex);
+      el.classList.toggle('done', i < stepIndex);
+    }
+  }
+
+  function render() {
+    dial.style.transform = `rotate(${rotation}deg)`;
+    readout.textContent = currentNumber();
+  }
+
+  // Track rotation & advance the unlock steps
+  let prevRotation = 0;
+  function onRotate(newRot) {
+    const delta = newRot - prevRotation;
+    prevRotation = newRot;
+    rotation = newRot;
+    totalTravel += delta;
+
+    const num = currentNumber();
+
+    // Step logic: check when user "stops" on the target by landing exactly on it
+    // and moving in the required direction.
+    if (stepIndex === 0) {
+      // Need to be turning right (CW). Landing on combo[0].
+      if (num === combo[0] && delta < 0) markStepReached(0);
+    } else if (stepIndex === 1) {
+      if (num === combo[1] && delta > 0) markStepReached(1);
+    } else if (stepIndex === 2) {
+      if (num === combo[2] && delta < 0) markStepReached(2);
+    }
+    render();
+  }
+
+  let holdTimer = null;
+  function markStepReached(i) {
+    // Confirm the user pauses on the number briefly to count it as "stopped"
+    clearTimeout(holdTimer);
+    const target = combo[i];
+    holdTimer = setTimeout(() => {
+      if (currentNumber() === target && stepIndex === i) {
+        stepIndex++;
+        updateSteps();
+        if (stepIndex === 3) unlocked();
+        else {
+          status.textContent = 'Step ' + (i + 1) + ' ✓';
+          status.className = 'status good';
+        }
+      }
+    }, 350);
+  }
+
+  function unlocked() {
+    status.textContent = '🔓 UNLOCKED!';
+    status.className = 'status good';
+  }
+
+  function peek() {
+    reveal.innerHTML = 'Combination: <b>' + combo.join(' – ') + '</b>';
+  }
+
+  // --- Dragging ---
+  let dragging = false, startAngle = 0, startRot = 0;
+  const rect = () => dial.getBoundingClientRect();
+  function pointAngle(x, y) {
+    const r = rect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    return Math.atan2(y - cy, x - cx) * 180 / Math.PI;
+  }
+  function down(x, y) { dragging = true; startAngle = pointAngle(x, y); startRot = rotation; }
+  function move(x, y) {
+    if (!dragging) return;
+    let a = pointAngle(x, y);
+    let diff = a - startAngle;
+    onRotate(startRot + diff);
+  }
+  function up() { dragging = false; }
+
+  dial.addEventListener('mousedown', e => { down(e.clientX, e.clientY); e.preventDefault(); });
+  window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+  window.addEventListener('mouseup', up);
+  dial.addEventListener('touchstart', e => { const t = e.touches[0]; down(t.clientX, t.clientY); }, {passive:true});
+  window.addEventListener('touchmove', e => { if(!dragging) return; const t = e.touches[0]; move(t.clientX, t.clientY); }, {passive:true});
+  window.addEventListener('touchend', up);
+
+  // Keyboard: arrows nudge by one number
+  window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft')  onRotate(rotation + DEG);   // CCW
+    if (e.key === 'ArrowRight') onRotate(rotation - DEG);   // CW
+  });
+
+  document.getElementById('newBtn').addEventListener('click', newCombo);
+  document.getElementById('peekBtn').addEventListener('click', peek);
+  document.getElementById('resetBtn').addEventListener('click', resetTurn);
+  document.getElementById('setBtn').addEventListener('click', setCombo);
+  ['c0', 'c1', 'c2'].forEach(id => document.getElementById(id)
+    .addEventListener('keydown', e => { if (e.key === 'Enter') setCombo(); }));
+
+  newCombo();
+})();
+</script>
+</body>
+</html>
