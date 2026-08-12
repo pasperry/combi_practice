@@ -442,16 +442,23 @@
   }
 
   // ---------- Dragging ----------
-  let dragging = false, startAngle = 0, startRot = 0;
+  // Accumulate small angle deltas between moves (unwrapped across the ±180°
+  // seam) so full turns add up. A fixed start-angle reference would jump by
+  // 360° each time the pointer crossed the seam and break turn counting.
+  let dragging = false, lastAngle = 0;
   const rect = () => dial.getBoundingClientRect();
   function pointAngle(x, y) {
     const r = rect();
     return Math.atan2(y - (r.top + r.height / 2), x - (r.left + r.width / 2)) * 180 / Math.PI;
   }
-  function down(x, y) { dragging = true; startAngle = pointAngle(x, y); startRot = rotation; }
+  function down(x, y) { dragging = true; lastAngle = pointAngle(x, y); }
   function move(x, y) {
     if (!dragging) return;
-    onRotate(startRot + (pointAngle(x, y) - startAngle));
+    const a = pointAngle(x, y);
+    let d = a - lastAngle;
+    if (d > 180) d -= 360; else if (d < -180) d += 360;
+    lastAngle = a;
+    onRotate(rotation + d);
   }
   function up() { dragging = false; }
 
